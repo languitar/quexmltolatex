@@ -27,8 +27,9 @@ def make_label(text):
     return re.sub('[^0-9a-zA-Z]+', '-', text.lower())
 
 
-def print_label(text):
-    print("\\label{{questionnaire:{}}}".format(
+def print_label(text, prefix):
+    print("\\label{{{}:{}}}".format(
+        prefix,
         make_label(text)))
 
 
@@ -70,13 +71,14 @@ def gather_infos(root):
     return infos
 
 
-def handle_question(question, level):
+def handle_question(question, level, label_prefix):
     print()
 
     print_heading(question.find('text').text, level)
     print_label('section-{}-question-{}'.format(
         question.getparent().attrib['id'],
-        question.find('response').attrib['varName']))
+        question.find('response').attrib['varName']),
+                label_prefix)
 
     directive = question.find("directive[position='during']")
     if directive is not None and directive.find('text').text:
@@ -103,11 +105,11 @@ def handle_question(question, level):
     RESPONSE_HANDLERS[response.tag](response)
 
 
-def handle_section(section, level):
+def handle_section(section, level, label_prefix):
     print()
     print_heading(section.find(
         "sectionInfo[position='title']").find('text').text, level)
-    print_label('section-{}'.format(section.attrib['id']))
+    print_label('section-{}'.format(section.attrib['id']), label_prefix)
 
     before = section.find("sectionInfo[position='before']")
     if before is not None:
@@ -115,29 +117,30 @@ def handle_section(section, level):
         print(prettify_text(before.find('text').text))
 
     for question in section.findall('question'):
-        handle_question(question, LEVELS[LEVELS.index(level) + 1])
+        handle_question(question, LEVELS[LEVELS.index(level) + 1],
+                        label_prefix)
 
 
-def print_info(title, text, level):
+def print_info(title, text, level, label_prefix):
     print()
     print_heading(title, level)
-    print_label(title)
+    print_label(title, label_prefix)
     print()
     print(prettify_text(text))
 
 
-def process(root, level):
+def process(root, level, label_prefix):
 
     infos = gather_infos(root)
 
     if 'before' in infos:
-        print_info('Introduction', infos['before'], level)
+        print_info('Introduction', infos['before'], level, label_prefix)
 
     for section in root.findall('section'):
-        handle_section(section, level)
+        handle_section(section, level, label_prefix)
 
     if 'after' in infos:
-        print_info('Final remarks', infos['after'], level)
+        print_info('Final remarks', infos['after'], level, label_prefix)
 
 
 def main():
@@ -150,6 +153,10 @@ def main():
         default='section',
         help='LaTeX level to use for the top-level structures created.')
     parser.add_argument(
+        '-p', '--label-prefix',
+        default='questionnaire',
+        help='Prefix used to construct labels')
+    parser.add_argument(
         'xml',
         metavar='FILE',
         type=argparse.FileType(),
@@ -157,7 +164,7 @@ def main():
 
     args = parser.parse_args()
 
-    process(etree.parse(args.xml), args.start_level)
+    process(etree.parse(args.xml), args.start_level, args.label_prefix)
 
 
 if __name__ == "__main__":
