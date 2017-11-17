@@ -83,8 +83,9 @@ def handle_question(question, level):
         print()
         print('{}'.format(prettify_text(directive.find('text').text)))
 
-    # Present the possible sub-questions
-    subs = question.findall('subQuestion')
+    # Present the possible sub-questions, if there is at least a described
+    # entry
+    subs = question.xpath('subQuestion/text[text()]/parent::*')
     if subs:
         print()
         print('Rate individually for:')
